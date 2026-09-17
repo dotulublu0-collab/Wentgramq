@@ -21,13 +21,16 @@ jobs:
 
       - name: Install Android SDK 36 and NDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          echo "Using: $SDKMANAGER"
+          "$SDKMANAGER" --version
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
 
       - name: Show Android environment
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --version
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
           java -version
 
       - name: Make Gradle executable
