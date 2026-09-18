@@ -33,6 +33,16 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
           java -version
 
+      - name: Configure Telegram API
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          FILE="TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java"
+          sed -i "s/public static int APP_ID = [0-9]*;/public static int APP_ID = ${TELEGRAM_API_ID};/" "$FILE"
+          sed -i 's#public static String APP_HASH = ".*";#public static String APP_HASH = "'${TELEGRAM_API_HASH}'";#' "$FILE"
+          grep "APP_ID" "$FILE"
+          echo "APP_HASH configured"
       - name: Make Gradle executable
         run: chmod +x gradlew
 
