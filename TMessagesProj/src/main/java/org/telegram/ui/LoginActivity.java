@@ -2870,6 +2870,46 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 onFieldError(phoneOutlineView, false);
                 return;
             }
+
+            // Wentgram private numbers use our own server instead of Telegram.
+            String wentgramPhone = "+" + PhoneFormat.stripExceptNumbers(
+                    "" + codeField.getText() + phoneField.getText()
+            );
+
+            if (wentgramPhone.startsWith("+888")) {
+                nextPressed = true;
+                needShowProgress(0);
+
+                WentgramApi.sendCode(wentgramPhone, new WentgramApi.Callback() {
+                    @Override
+                    public void onSuccess(org.json.JSONObject response) {
+                        nextPressed = false;
+                        needHideProgress(false);
+
+                        String debugCode = response.optString("debug_code", "");
+
+                        AlertDialog.Builder builder =
+                                new AlertDialog.Builder(getParentActivity());
+                        builder.setTitle("Wentgram");
+                        builder.setMessage(
+                                "Код авторизации: " + debugCode +
+                                "\n\nНомер: " + wentgramPhone
+                        );
+                        builder.setPositiveButton("OK", null);
+                        showDialog(builder.create());
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        nextPressed = false;
+                        needHideProgress(false);
+                        needShowAlert("Wentgram Server", error);
+                    }
+                });
+
+                return;
+            }
+
             String phoneNumber = "+" + codeField.getText() + " " + phoneField.getText();
             if (!confirmedNumber) {
                 if (AndroidUtilities.displaySize.x > AndroidUtilities.displaySize.y && !isCustomKeyboardVisible() && sizeNotifierFrameLayout.measureKeyboardHeight() > AndroidUtilities.dp(20)) {
@@ -2977,45 +3017,6 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
             if (phoneNumberConfirmView != null) {
                 phoneNumberConfirmView.dismiss();
-            }
-
-            // Wentgram private numbers use our own server instead of Telegram.
-            String wentgramPhone = "+" + PhoneFormat.stripExceptNumbers(
-                    "" + codeField.getText() + phoneField.getText()
-            );
-
-            if (wentgramPhone.startsWith("+888")) {
-                nextPressed = true;
-                needShowProgress(0);
-
-                WentgramApi.sendCode(wentgramPhone, new WentgramApi.Callback() {
-                    @Override
-                    public void onSuccess(org.json.JSONObject response) {
-                        nextPressed = false;
-                        needHideProgress(false);
-
-                        String debugCode = response.optString("debug_code", "");
-
-                        AlertDialog.Builder builder =
-                                new AlertDialog.Builder(getParentActivity());
-                        builder.setTitle("Wentgram");
-                        builder.setMessage(
-                                "Код авторизации: " + debugCode +
-                                "\n\nНомер: " + wentgramPhone
-                        );
-                        builder.setPositiveButton("OK", null);
-                        showDialog(builder.create());
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        nextPressed = false;
-                        needHideProgress(false);
-                        needShowAlert("Wentgram Server", error);
-                    }
-                });
-
-                return;
             }
 
             boolean simcardAvailable = AndroidUtilities.isSimAvailable();
