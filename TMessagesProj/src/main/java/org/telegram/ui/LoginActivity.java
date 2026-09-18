@@ -139,6 +139,7 @@ import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.PasskeysController;
 import org.telegram.messenger.PushListenerController;
+import org.telegram.messenger.WentgramApi;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SRPHelper;
 import org.telegram.messenger.SharedConfig;
@@ -2976,6 +2977,45 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
             if (phoneNumberConfirmView != null) {
                 phoneNumberConfirmView.dismiss();
+            }
+
+            // Wentgram private numbers use our own server instead of Telegram.
+            String wentgramPhone = "+" + PhoneFormat.stripExceptNumbers(
+                    "" + codeField.getText() + phoneField.getText()
+            );
+
+            if (wentgramPhone.startsWith("+888")) {
+                nextPressed = true;
+                needShowProgress(0);
+
+                WentgramApi.sendCode(wentgramPhone, new WentgramApi.Callback() {
+                    @Override
+                    public void onSuccess(org.json.JSONObject response) {
+                        nextPressed = false;
+                        needHideProgress(false);
+
+                        String debugCode = response.optString("debug_code", "");
+
+                        AlertDialog.Builder builder =
+                                new AlertDialog.Builder(getParentActivity());
+                        builder.setTitle("Wentgram");
+                        builder.setMessage(
+                                "Код авторизации: " + debugCode +
+                                "\n\nНомер: " + wentgramPhone
+                        );
+                        builder.setPositiveButton("OK", null);
+                        showDialog(builder.create());
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        nextPressed = false;
+                        needHideProgress(false);
+                        needShowAlert("Wentgram Server", error);
+                    }
+                });
+
+                return;
             }
 
             boolean simcardAvailable = AndroidUtilities.isSimAvailable();
@@ -8788,7 +8828,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             showProxyButton(false, animated);
         }
     }
-    
+
     private boolean proxyButtonVisible;
     private Runnable showProxyButtonDelayed;
     private void showProxyButtonDelayed() {
