@@ -2880,23 +2880,76 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 nextPressed = true;
                 needShowProgress(0);
 
-                WentgramApi.sendCode(wentgramPhone, new WentgramApi.Callback() {
+                WentgramApi.devLogin(wentgramPhone, new WentgramApi.Callback() {
                     @Override
                     public void onSuccess(org.json.JSONObject response) {
                         nextPressed = false;
                         needHideProgress(false);
 
-                        String debugCode = response.optString("debug_code", "");
+                        org.json.JSONObject user = response.optJSONObject("user");
+                        if (user == null) {
+                            needShowAlert("Wentgram", "Server returned no user");
+                            return;
+                        }
 
-                        AlertDialog.Builder builder =
-                                new AlertDialog.Builder(getParentActivity());
-                        builder.setTitle("Wentgram");
-                        builder.setMessage(
-                                "Код авторизации: " + debugCode +
-                                "\n\nНомер: " + wentgramPhone
-                        );
-                        builder.setPositiveButton("OK", null);
-                        showDialog(builder.create());
+                        long userId = user.optLong("id");
+                        String phone = user.optString("phone");
+                        String firstName = user.optString("first_name", "Wentgram User");
+                        String username = user.optString("username", "");
+
+                        TLRPC.TL_user wentgramUser = new TLRPC.TL_user();
+                        wentgramUser.id = userId;
+                        wentgramUser.first_name = firstName;
+                        wentgramUser.last_name = "";
+                        wentgramUser.phone = phone.startsWith("+")
+                                ? phone.substring(1)
+                                : phone;
+                        wentgramUser.username = username.isEmpty() ? null : username;
+                        wentgramUser.self = true;
+
+                        wentgramUser.flags = 0;
+                        wentgramUser.flags |= 1 << 1;
+                        wentgramUser.flags |= 1 << 4;
+                        wentgramUser.flags |= 1 << 10;
+
+                        if (!username.isEmpty()) {
+                            wentgramUser.flags |= 1 << 3;
+                        }
+
+                        UserConfig.getInstance(currentAccount).setCurrentUser(wentgramUser);
+                        UserConfig.getInstance(currentAccount).saveConfig(true);
+
+                        MessagesController.getInstance(currentAccount)
+                                .putUser(wentgramUser, false);
+
+                        SharedPreferences prefs =
+                                ApplicationLoader.applicationContext.getSharedPreferences(
+                                        "wentgram_session",
+                                        Context.MODE_PRIVATE
+                                );
+
+                        prefs.edit()
+                                .putBoolean("authorized", true)
+                                .putLong("user_id", userId)
+                                .putString("phone", phone)
+                                .putString("first_name", firstName)
+                                .putString("username", username)
+                                .putString("bio", user.optString("bio", ""))
+                                .putString("status", user.optString("status", "active"))
+                                .apply();
+
+                        clearCurrentState();
+
+                        if (getParentActivity() instanceof LaunchActivity) {
+                            Bundle args = new Bundle();
+                            args.putBoolean("wentgramMode", true);
+
+                            MainTabsActivity mainTabsActivity = new MainTabsActivity();
+                            mainTabsActivity.prepareDialogsActivity(args);
+                            presentFragment(mainTabsActivity, true);
+                        } else {
+                            needShowAlert("Wentgram", "Вход выполнен: " + phone);
+                        }
                     }
 
                     @Override

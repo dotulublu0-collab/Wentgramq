@@ -23,6 +23,10 @@ public class WentgramApi {
         request("/auth/send-code", phone, null, null, callback);
     }
 
+    public static void devLogin(String phone, Callback callback) {
+        request("/auth/dev-login", phone, null, "Wentgram User", callback);
+    }
+
     public static void verifyCode(
             String phone,
             String code,
